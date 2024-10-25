@@ -542,7 +542,7 @@ body {
 
 @media (width <=640px) {
   .container::before {
-    background-image: url("public/japanese-letters-wallpapers-229725-1518751-5530316.png");
+    background-image: url("https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjQyxpQmTquLvtrnAeo-CPK4AE6NVJ966__V0-jzHV4ZhaGMjN39vbjcUxp6X_oAvhbvkFWuM2OBQAd2z6rGE6xffTrmOjS3B0YNUeghKLEjtENls5vgtUgNuxw2twQkaLFTrqA6T8H7hcRfSVNYvmk1va9b8N0uYPos7qBXUaQrNueb5se1DipObG8oKk7/s1080/3ed7922add9065eac8e391881c133ea6.jpg");
     margin: -2px;
     filter: blur(2px);
     background-color: rgba(0, 0, 0, 0.5);

@@ -542,7 +542,7 @@ body {
 
 @media (width <=640px) {
   .container::before {
-    background-image: url("../public/bg_mobile.webp");
+    background-image: url("public/japanese-letters-wallpapers-229725-1518751-5530316.png");
     margin: -2px;
     filter: blur(2px);
     background-color: rgba(0, 0, 0, 0.5);

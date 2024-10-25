@@ -4,7 +4,7 @@ const elements = {
 	statusBox: document.getElementById("status"),
 	statusImage: document.getElementById("status-image"),
 	avatarImage: document.getElementById("avatar-image"),
-	avaterDecoration: document.getElementById("avatar-decoration"),
+	avatarDecoration: document.getElementById("avatar-decoration"),
 	bannerImage: document.getElementById("banner-image"),
 	bannerColor: document.querySelector(".banner"),
 	displayName: document.querySelector(".display-name"),
@@ -29,13 +29,18 @@ async function fetchDiscordStatus() {
 		const lanyardData = lanyardResponse.data;
 		const lookupData = lookupResponse;
 
+		if (!lanyardData || !lookupData) {
+			throw new Error("Invalid data received from APIs.");
+		}
+
 		const { discord_status, activities, discord_user, emoji } = lanyardData;
 		const { avatar, banner, badges: userBadges, global_name, tag } = lookupData;
 
-		elements.displayName.innerHTML = discord_user.display_name;
-		elements.username.innerHTML = discord_user.username;
+		elements.displayName.innerHTML = discord_user.display_name || "Unknown";
+		elements.username.innerHTML = discord_user.username || "Unknown";
 
-		let imagePath;
+		let imagePath = "./public/status/offline.svg"; // Default to offline
+
 		switch (discord_status) {
 			case "online":
 				imagePath = "./public/status/online.svg";
@@ -49,67 +54,52 @@ async function fetchDiscordStatus() {
 			case "offline":
 				imagePath = "./public/status/offline.svg";
 				break;
-			default:
-				imagePath = "./public/status/offline.svg";
-				break;
 		}
 
-		if (
-			activities.find(
-				(activity) =>
-					activity.type === 1 &&
-					(activity.url.includes("twitch.tv") ||
-						activity.url.includes("youtube.com"))
-			)
-		) {
-			imagePath = "./public/status/streaming.svg";
-		}
+		if (activities && activities.length > 0) {
+			if (activities.some(activity => 
+				activity.type === 1 && 
+				(activity.url.includes("twitch.tv") || activity.url.includes("youtube.com"))
+			)) {
+				imagePath = "./public/status/streaming.svg";
+			}
 
-		// Banner
-		if (banner.id == null) {
-			elements.bannerImage.src =
-				"https://cdn.discordapp.com/attachments/1104468941012746240/1174709500729622619/a_0559d4a762f9f3a77da4804b051029ef.gif";
+			elements.customStatusText.innerHTML = activities[0].state || "Not doing anything!";
+			if (activities[0].emoji) {
+				elements.customStatusEmoji.src = `https://cdn.discordapp.com/emojis/${activities[0].emoji.id}?format=webp&size=24&quality=lossless`;
+				elements.customStatusEmoji.style.display = "inline";
+				elements.customStatusEmoji.style.marginRight = "5px";
+			} else {
+				elements.customStatusEmoji.style.display = "none";
+			}
 		} else {
+			elements.customStatusText.innerHTML = "Not doing anything!";
+			elements.customStatusEmoji.style.display = "none";
+		}
+
+		// Handle banner
+		if (banner.id) {
 			elements.bannerImage.src = `https://cdn.discordapp.com/banners/${discord_user.id}/${banner.id}?format=webp&size=1024`;
 			elements.bannerImage.alt = `Discord banner: ${discord_user.username}`;
+		} else {
+			elements.bannerImage.src = "https://cdn.discordapp.com/attachments/1104468941012746240/1174709500729622619/a_0559d4a762f9f3a77da4804b051029ef.gif";
 		}
 
-		// Avatar decorations
-		if (discord_user.avatar_decoration_data == null) {
-			// elements.avaterDecoration.style.display = "none";
-			elements.avaterDecoration.src =
-				"https://cdn.discordapp.com/avatar-decoration-presets/a_5087f7f988bd1b2819cac3e33d0150f5.webp";
-				// "https://cdn.discordapp.com/avatar-decoration-presets/a_55c9d0354290afa8b7fe47ea9bd7dbcf.webp";
+		// Handle avatar decoration
+		if (discord_user.avatar_decoration_data) {
+			elements.avatarDecoration.src = `https://cdn.discordapp.com/avatar-decoration-presets/${discord_user.avatar_decoration_data.asset}?format=webp&size=1024`;
 		} else {
-			elements.avaterDecoration.src = `https://cdn.discordapp.com/avatar-decoration-presets/${discord_user.avatar_decoration_data.asset}?format=webp&size=1024`;
+			elements.avatarDecoration.src = "https://cdn.discordapp.com/avatar-decoration-presets/a_5087f7f988bd1b2819cac3e33d0150f5.webp";
 		}
 
 		elements.statusImage.src = imagePath;
 		elements.statusImage.alt = `Discord status: ${discord_status}`;
-		elements.bannerColor.style.backgroundColor = banner.color;
+		elements.bannerColor.style.backgroundColor = banner.color || "#7289DA"; // Default color
 		elements.avatarImage.src = `https://cdn.discordapp.com/avatars/${discord_user.id}/${avatar.id}?format=webp&size=1024`;
 		elements.avatarImage.alt = `Discord avatar: ${discord_user.username}`;
+		
+		elements.customStatus.style.display = (activities && activities.length > 0) ? "flex" : "none";
 
-		elements.customStatusText.innerHTML =
-			activities[0].state != null ? activities[0].state : "Not doing anything!";
-
-		if (activities[0].emoji == null) {
-			elements.customStatusEmoji.style.display = "none";
-		} else {
-			elements.customStatusEmoji.src = `https://cdn.discordapp.com/emojis/${activities[0].emoji.id}?format=webp&size=24&quality=lossless`;
-			elements.customStatusEmoji.style.marginRight = "5px";
-		}
-
-		if (activities[0].state == null && activities[0].emoji == null) {
-			elements.customStatus.style.display = "none";
-			elements.customStatusEmoji.style.display = "none";
-			elements.customStatusText.style.display = "none";
-			elements.customStatus.removeAttribute("style");
-			elements.customStatusEmoji.removeAttribute("style");
-			elements.customStatusText.removeAttribute("style");
-		} else {
-			elements.customStatus.style.display = "flex";
-		}
 	} catch (error) {
 		console.error("Unable to retrieve Discord status:", error);
 	}
@@ -128,15 +118,8 @@ tooltips.forEach((tooltip) => {
 	});
 });
 
-// const links = document.querySelectorAll("a");
-
-// links.forEach((link) => {
-// 	const href = link.getAttribute("href");
-// 	link.setAttribute("title", href);
-// });
-
+// Set titles for links
 const anchors = document.getElementsByTagName("a");
-
 for (let i = 0; i < anchors.length; i++) {
 	const anchor = anchors[i];
 	const href = anchor.getAttribute("href");

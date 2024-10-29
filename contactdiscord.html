@@ -1,0 +1,479 @@
+
+<!doctype html>
+<html lang="en"> 
+<head> 
+  <meta charset="UTF-8"> 
+  <title>DISCORD CONTACT FORM</title> 
+  <link rel="stylesheet" href="style.css"> 
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap');
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Quicksand', sans-serif;
+    }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #000;
+    }
+    section {
+      position: absolute;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 2px;
+      flex-wrap: wrap;
+      overflow: hidden;
+    }
+    section::before {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(#000,#0f0,#000);
+      animation: animate 5s linear infinite;
+    }
+    @keyframes animate {
+      0% {
+        transform: translateY(-100%);
+      }
+      100% {
+        transform: translateY(100%);
+      }
+    }
+    section .contact-form {
+      position: absolute;
+      width: 400px;
+      background: #222;
+      z-index: 1000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px;
+      border-radius: 4px;
+      box-shadow: 0 15px 35px rgba(0,0,0,9);
+    }
+    section .contact-form .content {
+      position: relative;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      gap: 40px;
+    }
+    section .contact-form .content h2 {
+      font-size: 2em;
+      color: #0f0;
+      text-transform: uppercase;
+    }
+    section .contact-form .content .form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+    section .contact-form .content .form .inputBox {
+      position: relative;
+      width: 100%;
+    }
+    section .contact-form .content .form .inputBox input,
+    section .contact-form .content .form .inputBox textarea {
+      position: relative;
+      width: 100%;
+      background: #333;
+      border: none;
+      outline: none;
+      padding: 25px 10px 7.5px;
+      border-radius: 4px;
+      color: #fff;
+      font-weight: 500;
+      font-size: 1em;
+    }
+    section .contact-form .content .form .inputBox i {
+      position: absolute;
+      left: 0;
+      padding: 15px 10px;
+      font-style: normal;
+      color: #aaa;
+      transition: 0.5s;
+      pointer-events: none;
+    }
+    .contact-form .content .form .inputBox input:focus ~ i,
+    .contact-form .content .form .inputBox input:valid ~ i,
+    .contact-form .content .form .inputBox textarea:focus ~ i,
+    .contact-form .content .form .inputBox textarea:valid ~ i {
+      transform: translateY(-7.5px);
+      font-size: 0.8em;
+      color: #0f0;
+    }
+    .contact-form .content .form .links {
+      position: relative;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+    }
+    .contact-form .content .form .links a {
+      color: #fff;
+      text-decoration: none;
+    }
+    .contact-form .content .form .links a:nth-child(2) {
+      color: #0f0;
+      font-weight: 600;
+    }
+    .contact-form .content .form .inputBox input[type="submit"] {
+      padding: 10px;
+      background: #0f0;
+      color: #000;
+      font-weight: 600;
+      font-size: 1.35em;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+    }
+    input[type="submit"]:active {
+      opacity: 0.6;
+    }
+    #cooldownInfo {
+      color: red;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px #000;
+    }
+    #sendButton[disabled] {
+      background: #333;
+      cursor: not-allowed;
+    }
+  </style>
+</head> 
+<body> 
+  <section> 
+    <div class="contact-form"> 
+      <div class="content"> 
+        <h2>DISCORD CONTACT FORM</h2> 
+        <form class="form" id="contactForm" onsubmit="sendContact(event)"> 
+          <div class="inputBox"> 
+            <input type="text" id="nameInput" required> 
+            <i>Display name*</i> 
+          </div> 
+          <div class="inputBox"> 
+            <input type="text" id="discordInput" required> 
+            <i>Username*</i> 
+          </div> 
+          <div class="inputBox"> 
+            <textarea id="messageInput" rows="4" required></textarea> 
+            <i>Message*</i> 
+          </div> 
+          <div class="inputBox"> 
+            <input type="submit" id="sendButton" value="SEND" onmouseenter="showBlockedIcon()" onmouseleave="hideBlockedIcon()"> 
+          </div> 
+          <div id="cooldownInfo" class="cooldown-info"></div> 
+        </form> 
+      </div> 
+    </div> 
+  </section> 
+  <script>
+    // Your JavaScript code here...
+	function setCooldownTimer() {
+      const cooldownDuration = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      const lastMessageTime = localStorage.getItem('lastMessageTime');
+
+      if (lastMessageTime) {
+        let elapsedTime = Date.now() - parseInt(lastMessageTime, 10);
+        let remainingTime = cooldownDuration - elapsedTime;
+
+        if (remainingTime > 0) {
+          const cooldownInterval = setInterval(() => {
+            const hours = Math.floor((remainingTime / (1000 * 60 * 60)) % 24);
+            const minutes = Math.floor((remainingTime / (1000 * 60)) % 60);
+            const seconds = Math.floor((remainingTime / 1000) % 60);
+
+            document.getElementById('cooldownInfo').textContent = `YOU CAN SEND ANOTHER MESSAGE IN ${hours} hrs ${minutes} mins ${seconds} secs`;
+
+            remainingTime -= 1000;
+
+            if (remainingTime < 0) {
+              clearInterval(cooldownInterval);
+              document.getElementById('sendButton').disabled = false;
+              document.getElementById('cooldownInfo').textContent = '';
+            }
+          }, 1000);
+
+          document.getElementById('sendButton').disabled = true;
+        }
+      }
+    }
+
+    setCooldownTimer();
+
+    async function sendContact(event) {
+      event.preventDefault();
+
+      const senderName = document.getElementById('nameInput').value;
+      const senderDiscord = document.getElementById('discordInput').value;
+      const senderMessage = document.getElementById('messageInput').value;
+
+      if (senderName.length < 5) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid Name',
+          text: 'Name must be at least 5 characters long.'
+        });
+        return;
+      }
+
+     
+
+      const visitorIP = await fetch('https://api.ipify.org?format=json')
+        .then(response => response.json())
+        .then(data => data.ip)
+        .catch(error => {
+          console.error('Error:', error);
+          return 'Unknown';
+        });
+
+      const userId = localStorage.getItem("userId") || Date.now().toString();
+      localStorage.setItem("userId", userId);
+
+      const userAgent = navigator.userAgent;
+      const language = navigator.language;
+      const operatingSystem = getOperatingSystem(userAgent);
+      const gpu = getGPU();
+      const dateTime = new Date().toLocaleString();
+      const screenResolution = `${window.screen.width}x${window.screen.height}`;
+      const deviceName = getDeviceName(userAgent);
+      const browser = getBrowser(userAgent);
+
+      const webhookBody = {
+        content: 'Form information',
+        embeds: [
+          {
+            title: 'Form Information',
+            fields: [
+              { name: 'Name', value: senderName },
+              { name: 'Discord', value: senderDiscord },
+              { name: 'Message', value: senderMessage },
+              { name: 'IP Address', value: visitorIP },
+              { name: 'User Agent', value: userAgent },
+              { name: 'Language', value: language },
+              { name: 'Browser', value: browser },
+              { name: 'Operating System', value: operatingSystem },
+              { name: 'GPU', value: gpu },
+              { name: 'Date and Time', value: dateTime },
+              { name: 'Screen Resolution', value: screenResolution },
+              { name: 'Device Model', value: deviceName },
+              { name: 'Cookie ID', value: userId },
+            ]
+          }
+        ]
+      };
+
+      const webhookUrl = 'https://discord.com/api/webhooks/1248645142215262208/MRBEgWP5OIoqInXVa_XvfiyLvFQATLs-Wc-e1GjlfG-cXUE2qGTqqK43HrPjznRbN47x';
+
+      document.getElementById('sendButton').disabled = true;
+      document.getElementById('sendButton').innerHTML = 'SENDING...';
+      
+      setTimeout(() => {
+        fetch(webhookUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(webhookBody)
+        })
+        .then(response => {
+          if (response.ok) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Thanks for your message! I will reply to you on Discord soon.',
+              showConfirmButton: false,
+              timer: 15000
+            });
+            document.getElementById('nameInput').value = '';
+            document.getElementById('discordInput').value = '';
+            document.getElementById('messageInput').value = '';
+            localStorage.setItem('lastMessageTime', Date.now().toString());
+            setCooldownTimer();
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'Oops...',
+              text: 'An unknown error occurred on the server.'
+            });
+          }
+        })
+        .catch(error => {
+          console.error('Error:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: 'An unknown error occurred on the server.'
+          });
+        })
+        .finally(() => {
+          document.getElementById('sendButton').innerHTML = 'SEND';
+        });
+      }, 10000); // simulate sending for 10 seconds
+    }
+
+    function getBrowser(userAgent) {
+      if (userAgent.includes('Firefox')) {
+        return 'Mozilla Firefox';
+      } else if (userAgent.includes('Chrome')) {
+        return 'Google Chrome';
+      } else if (userAgent.includes('Safari')) {
+        return 'Apple Safari';
+      } else if (userAgent.includes('Edge')) {
+        return 'Microsoft Edge';
+      } else if (userAgent.includes('Opera')) {
+        return 'Opera';
+      } else {
+        return 'Unknown';
+      }
+    }
+
+    function getOperatingSystem(userAgent) {
+      const operatingSystems = [
+        { name: 'Windows', searchString: 'Win' },
+        { name: 'Mac', searchString: 'Mac' },
+        { name: 'Linux', searchString: 'Linux' },
+        { name: 'iOS', searchString: 'iPhone|iPad|iPod' },
+        { name: 'Android', searchString: 'Android' }
+      ];
+
+      for (const os of operatingSystems) {
+        if (new RegExp(os.searchString, 'i').test(userAgent)) {
+          return os.name;
+        }
+      }
+
+      return 'Unknown';
+    }
+
+    function getDeviceName(userAgent) {
+      const deviceKeywords = [
+        // Add your device keywords here
+      ];
+
+      for (const device of deviceKeywords) {
+        if (userAgent.includes(device.keyword)) {
+          return device.name;
+        }
+      }
+
+      return 'Not registered in the database';
+    }
+
+    function getGPU() {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      const extension = gl.getExtension('WEBGL_debug_renderer_info');
+      const gpu = gl.getParameter(extension.UNMASKED_RENDERER_WEBGL);
+
+      return gpu || 'Unknown';
+    }
+
+    function showBlockedIcon() {
+      const sendButton = document.getElementById('sendButton');
+      if (sendButton.disabled) {
+        sendButton.innerHTML = "&#128683;"; // Blocked icon
+      }
+    }
+
+    function hideBlockedIcon() {
+      const sendButton = document.getElementById('sendButton');
+      if (sendButton.disabled) {
+        sendButton.innerHTML = "SEND"; // Default text
+      }
+    }
+  </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Protected Page</title>
+<script>
+// Disable right-click context menu
+document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+});
+
+// Disable Control+U
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'u') {
+        e.preventDefault();
+    }
+});
+</script>
+</head>
+<body>
+<style>* {
+  
+<script>/**
+ * Untuk membuat link bisa dicopy
+ */
+const actionLink = document.querySelectorAll(".link-card .link-action");
+
+actionLink.forEach((action) => {
+  action.addEventListener("click", (e) => {
+    e.preventDefault();
+    navigator.clipboard.writeText(action.parentElement.getAttribute("href"));
+
+    /**
+     * Untuk memunculkan toast notification
+     */
+    document.getElementById("toast").innerHTML = `
+        <div class="toast-container">
+            <p>✅ Link <strong> ${action.parentElement.innerText} </strong> berhasil disalin!</p>
+        </div>
+    `;
+
+    /**
+     * Untuk menghilangkan toast notification
+     */
+
+    setTimeout(() => {
+      document
+        .querySelector("#toast .toast-container")
+        .classList.add("toast-gone");
+    }, 300);
+
+    setTimeout(() => {
+      document.querySelector("#toast .toast-container").remove();
+    }, 2000);
+  });
+});
+
+/**
+ * Untuk ganti icon sosmed saat hover
+ */
+
+document.querySelectorAll(".sosmed i").forEach((sosmed) => {
+  sosmed.addEventListener("mouseenter", () => {
+    sosmed.classList.remove("ph");
+    sosmed.classList.add("ph-fill");
+  });
+
+  sosmed.addEventListener("mouseleave", () => {
+    sosmed.classList.remove("ph-fill");
+    sosmed.classList.add("ph");
+  });
+});
+
+/**
+ * Animasi Text bergerak saat scroll
+ */
+
+document.addEventListener("scroll", (e) => {
+  document.querySelector(".bg-text-animation").style.transform = `translateX(${
+    window.scrollY / 5
+  }px)`;
+});</script>

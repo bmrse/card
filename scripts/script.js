@@ -1,125 +1,134 @@
-const userID = "887557388700368896";
+const userID = "887557388700368896"; // Change this to your Discord user ID
 
 const elements = {
-    statusBox: document.querySelector(".status"),
-    statusImage: document.getElementById("status-image"),
-    displayName: document.querySelector(".display-name"),
-    username: document.querySelector(".username"),
-    customStatus: document.querySelector(".custom-status"),
-    customStatusText: document.querySelector(".custom-status-text"),
-    customStatusEmoji: document.getElementById("custom-status-emoji"),
+	statusBox: document.getElementById("status"),
+	statusImage: document.getElementById("status-image"),
+	avatarImage: document.getElementById("avatar-image"),
+	avatarDecoration: document.getElementById("avatar-decoration"),
+	bannerImage: document.getElementById("banner-image"),
+	bannerColor: document.querySelector(".banner"),
+	displayName: document.querySelector(".display-name"),
+	username: document.querySelector(".username"),
+	badges: document.querySelector(".badges-left"),
+	customStatus: document.querySelector(".custom-status"),
+	customStatusText: document.querySelector(".custom-status-text"),
+	customStatusEmoji: document.getElementById("custom-status-emoji"),
 };
 
-// WebSocket retry limit
-let retryCount = 0;
+async function fetchDiscordStatus() {
+	try {
+		const [lanyardResponse, lookupResponse] = await Promise.all([
+			fetch(`https://api.lanyard.rest/v1/users/${userID}`).then((response) =>
+				response.json()
+			),
+			fetch(`https://discordlookup.mesavirep.xyz/v1/user/${userID}`).then(
+				(response) => response.json()
+			),
+		]);
 
-function startWebSocket() {
-    const ws = new WebSocket("wss://api.lanyard.rest/socket");
+		const lanyardData = lanyardResponse.data;
+		const lookupData = lookupResponse;
 
-    ws.onopen = () => {
-        ws.send(JSON.stringify({ op: 2, d: { subscribe_to_id: userID } }));
-        retryCount = 0;  // Reset retry count on successful connection
-    };
+		if (!lanyardData || !lookupData) {
+			throw new Error("Invalid data received from APIs.");
+		}
 
-    ws.onmessage = (event) => {
-        const { t, d } = JSON.parse(event.data);
-        if (t === "INIT_STATE" || t === "PRESENCE_UPDATE") {
-            updateStatus(d);
-        }
-    };
+		const { discord_status, activities, discord_user, emoji } = lanyardData;
+		const { avatar, banner, badges: userBadges, global_name, tag } = lookupData;
 
-    ws.onerror = (error) => {
-        console.error("Lỗi WebSocket:", error);
-        ws.close();
-    };
+		elements.displayName.innerHTML = discord_user.display_name || "Unknown";
+		elements.username.innerHTML = discord_user.username || "Unknown";
 
-    ws.onclose = () => {
-        console.log("WebSocket đóng, thử kết nối lại...");
-        if (retryCount < 5) {  // Limit the retry attempts
-            retryCount++;
-            setTimeout(startWebSocket, 1000);
-        } else {
-            console.log("Reached maximum retry attempts.");
-        }
-    };
+		let imagePath = "./public/status/offline.svg"; // Default to offline
+
+		switch (discord_status) {
+			case "online":
+				imagePath = "./public/status/online.svg";
+				break;
+			case "idle":
+				imagePath = "./public/status/idle.svg";
+				break;
+			case "dnd":
+				imagePath = "./public/status/dnd.svg";
+				break;
+			case "offline":
+				imagePath = "./public/status/offline.svg";
+				break;
+		}
+
+		if (activities && activities.length > 0) {
+			if (activities.some(activity => 
+				activity.type === 1 && 
+				(activity.url.includes("twitch.tv") || activity.url.includes("youtube.com"))
+			)) {
+				imagePath = "./public/status/streaming.svg";
+			}
+
+			elements.customStatusText.innerHTML = activities[0].state || "Not doing anything!";
+			if (activities[0].emoji) {
+				elements.customStatusEmoji.src = `https://cdn.discordapp.com/emojis/${activities[0].emoji.id}?format=webp&size=24&quality=lossless`;
+				elements.customStatusEmoji.style.display = "inline";
+				elements.customStatusEmoji.style.marginRight = "5px";
+			} else {
+				elements.customStatusEmoji.style.display = "none";
+			}
+		} else {
+			elements.customStatusText.innerHTML = "Not doing anything!";
+			elements.customStatusEmoji.style.display = "none";
+		}
+
+		// Handle banner
+		if (banner.id) {
+			elements.bannerImage.src = `https://cdn.discordapp.com/banners/${discord_user.id}/${banner.id}?format=webp&size=1024`;
+			elements.bannerImage.alt = `Discord banner: ${discord_user.username}`;
+		} else {
+			elements.bannerImage.src = "https://cdn.discordapp.com/attachments/1104468941012746240/1174709500729622619/a_0559d4a762f9f3a77da4804b051029ef.gif";
+		}
+
+		// Handle avatar decoration
+		if (discord_user.avatar_decoration_data) {
+			elements.avatarDecoration.src = `https://cdn.discordapp.com/avatar-decoration-presets/${discord_user.avatar_decoration_data.asset}?format=webp&size=1024`;
+		} else {
+			elements.avatarDecoration.src = "https://cdn.discordapp.com/avatar-decoration-presets/a_5087f7f988bd1b2819cac3e33d0150f5.webp";
+		}
+
+		elements.statusImage.src = imagePath;
+		elements.statusImage.alt = `Discord status: ${discord_status}`;
+		elements.bannerColor.style.backgroundColor = banner.color || "#7289DA"; // Default color
+		elements.avatarImage.src = `https://cdn.discordapp.com/avatars/${discord_user.id}/${avatar.id}?format=webp&size=1024`;
+		elements.avatarImage.alt = `Discord avatar: ${discord_user.username}`;
+		
+		elements.customStatus.style.display = (activities && activities.length > 0) ? "flex" : "none";
+
+	} catch (error) {
+		console.error("Unable to retrieve Discord status:", error);
+	}
 }
 
-function updateStatus(lanyardData) {
-    // Destructure the data from the WebSocket
-    const { discord_status, activities, discord_user } = lanyardData;
+// Logic for tooltips
+const tooltips = document.querySelectorAll(".tooltip");
+tooltips.forEach((tooltip) => {
+	tooltip.addEventListener("mouseenter", () => {
+		const ariaLabel = tooltip.getAttribute("aria-label");
+		tooltip.setAttribute("data-tooltip-content", ariaLabel);
+	});
 
-    // Ensure activities is an array and get the first activity
-    const activitiesArray = Array.isArray(activities) ? activities : [];
-    const firstActivity = activitiesArray[0] || {};
+	tooltip.addEventListener("mouseleave", () => {
+		tooltip.removeAttribute("data-tooltip-content");
+	});
+});
 
-    // Handle user information
-    if (elements.displayName) elements.displayName.innerHTML = discord_user.display_name || "Unknown";
-    if (elements.username) elements.username.innerHTML = discord_user.username || "Unknown";
-
-    // Handle status
-    let imagePath = "./public/status/offline.svg";
-    let label = "Offline";
-    switch (discord_status) {
-        case "online":
-            imagePath = "./public/status/online.svg";
-            label = "Online";
-            break;
-        case "idle":
-            imagePath = "./public/status/idle.svg";
-            label = "Idle / AFK";
-            break;
-        case "dnd":
-            imagePath = "./public/status/dnd.svg";
-            label = "Do Not Disturb";
-            break;
-        case "offline":
-            imagePath = "./public/status/offline.svg";
-            label = "Offline";
-            break;
-        default:
-            label = "Unknown";
-            break;
-    }
-
-    // Check if the user is streaming (e.g., on Twitch or YouTube)
-    const isStreaming = activitiesArray.some(
-        (activity) =>
-            activity.type === 1 &&
-            (activity.url.includes("twitch.tv") || activity.url.includes("youtube.com"))
-    );
-    if (isStreaming) {
-        imagePath = "./public/status/streaming.svg";
-        label = "Streaming";
-    }
-
-    // Update status image and aria-label
-    if (elements.statusImage) elements.statusImage.src = imagePath;
-    if (elements.statusBox) elements.statusBox.setAttribute("aria-label", label);
-
-    // Handle custom status (state and emoji)
-    const activityState = firstActivity.state || "Not doing anything!";
-    if (elements.customStatusText) elements.customStatusText.innerHTML = activityState;
-
-    const emoji = firstActivity?.emoji || {};
-    if (elements.customStatusEmoji) {
-        if (emoji.id) {
-            elements.customStatusEmoji.src = `https://cdn.discordapp.com/emojis/${emoji.id}?format=webp&size=24&quality=lossless`;
-        } else if (emoji.name) {
-            elements.customStatusEmoji.src = "./public/icons/poppy.png";  // Fallback emoji image
-        } else {
-            elements.customStatusEmoji.style.display = "none";
-        }
-    }
-
-    // Toggle the visibility of custom status based on state and emoji
-    if (elements.customStatus) {
-        if (activityState || emoji.id || emoji.name) {
-            elements.customStatus.style.display = "flex";
-        } else {
-            elements.customStatus.style.display = "none";
-        }
-    }
+// Set titles for links
+const anchors = document.getElementsByTagName("a");
+for (let i = 0; i < anchors.length; i++) {
+	const anchor = anchors[i];
+	const href = anchor.getAttribute("href");
+	if (href) {
+		anchor.setAttribute("title", href);
+	}
 }
 
-// Start the WebSocket connection
-startWebSocket();
+// Fetch Discord status on page load
+fetchDiscordStatus();
+// Fetch Discord status every 6 seconds
+setInterval(fetchDiscordStatus, 6000);

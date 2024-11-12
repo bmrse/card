@@ -13,6 +13,8 @@ const elements = {
 	customStatus: document.querySelector(".custom-status"),
 	customStatusText: document.querySelector(".custom-status-text"),
 	customStatusEmoji: document.getElementById("custom-status-emoji"),
+	nowPlaying: document.querySelector(".now-playing"), // New element for displaying "Now Playing"
+	statusToggleButton: document.getElementById("status-toggle"), // New toggle button
 };
 
 async function fetchDiscordStatus() {
@@ -36,9 +38,11 @@ async function fetchDiscordStatus() {
 		const { discord_status, activities, discord_user, emoji } = lanyardData;
 		const { avatar, banner, badges: userBadges, global_name, tag } = lookupData;
 
+		// Update name and username
 		elements.displayName.innerHTML = discord_user.display_name || "Unknown";
 		elements.username.innerHTML = discord_user.username || "Unknown";
 
+		// Set default status image
 		let imagePath = "./public/status/offline.svg"; // Default to offline
 
 		switch (discord_status) {
@@ -56,7 +60,9 @@ async function fetchDiscordStatus() {
 				break;
 		}
 
+		// Handle activities
 		if (activities && activities.length > 0) {
+			// Handle streaming
 			if (activities.some(activity => 
 				activity.type === 1 && 
 				(activity.url.includes("twitch.tv") || activity.url.includes("youtube.com"))
@@ -65,6 +71,8 @@ async function fetchDiscordStatus() {
 			}
 
 			elements.customStatusText.innerHTML = activities[0].state || "Not doing anything!";
+
+			// Display emoji if present
 			if (activities[0].emoji) {
 				elements.customStatusEmoji.src = `https://cdn.discordapp.com/emojis/${activities[0].emoji.id}?format=webp&size=24&quality=lossless`;
 				elements.customStatusEmoji.style.display = "inline";
@@ -72,9 +80,18 @@ async function fetchDiscordStatus() {
 			} else {
 				elements.customStatusEmoji.style.display = "none";
 			}
+
+			// New feature: Display "Now Playing" if music activity is active (e.g., Spotify)
+			if (activities[0].name === "Spotify") {
+				elements.nowPlaying.innerHTML = `🎵 Now Playing: ${activities[0].state}`;
+			} else {
+				elements.nowPlaying.innerHTML = "";
+			}
+
 		} else {
 			elements.customStatusText.innerHTML = "Not doing anything!";
 			elements.customStatusEmoji.style.display = "none";
+			elements.nowPlaying.innerHTML = "";
 		}
 
 		// Handle banner
@@ -92,17 +109,39 @@ async function fetchDiscordStatus() {
 			elements.avatarDecoration.src = "https://cdn.discordapp.com/avatar-decoration-presets/a_5087f7f988bd1b2819cac3e33d0150f5.webp";
 		}
 
+		// Display badges (New feature: display custom badges if available)
+		elements.badges.innerHTML = "";
+		if (userBadges) {
+			userBadges.forEach((badge) => {
+				const badgeImg = document.createElement("img");
+				badgeImg.src = `https://cdn.discordapp.com/badges/${discord_user.id}/${badge.id}.png?size=32`;
+				badgeImg.alt = badge.name;
+				badgeImg.classList.add("user-badge");
+				elements.badges.appendChild(badgeImg);
+			});
+		}
+
+		// Set status image and avatar
 		elements.statusImage.src = imagePath;
 		elements.statusImage.alt = `Discord status: ${discord_status}`;
 		elements.bannerColor.style.backgroundColor = banner.color || "#7289DA"; // Default color
 		elements.avatarImage.src = `https://cdn.discordapp.com/avatars/${discord_user.id}/${avatar.id}?format=webp&size=1024`;
 		elements.avatarImage.alt = `Discord avatar: ${discord_user.username}`;
-		
+
+		// Show/hide custom status box
 		elements.customStatus.style.display = (activities && activities.length > 0) ? "flex" : "none";
 
 	} catch (error) {
 		console.error("Unable to retrieve Discord status:", error);
 	}
+}
+
+// Toggle display of custom status
+if (elements.statusToggleButton) {
+	elements.statusToggleButton.addEventListener("click", () => {
+		const statusBoxDisplay = elements.statusBox.style.display;
+		elements.statusBox.style.display = statusBoxDisplay === "none" ? "block" : "none";
+	});
 }
 
 // Logic for tooltips

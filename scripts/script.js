@@ -108,7 +108,7 @@ function updateStatus(lanyardData) {
       elements.customStatusEmoji.src = `https://cdn.discordapp.com/emojis/${emoji.id}?format=webp&size=24&quality=lossless`;
       elements.customStatusEmoji.style.display = "inline";  // Ensure emoji is visible
     } else if (emoji && emoji.name) {
-      elements.customStatusEmoji.src = "./public/icons/poppy.png";
+      elements.customStatusEmoji.src = "public/sus-cat-cat-sus.png";
       elements.customStatusEmoji.style.display = "inline";  // Ensure emoji is visible
     } else {
       elements.customStatusEmoji.style.display = "none";  // Hide emoji if no custom emoji
